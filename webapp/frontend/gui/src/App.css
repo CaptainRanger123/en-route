@@ -1,0 +1,11 @@
+body, #root, #app, #app>div {
+  background: #D4D4D4;
+  background-image: url("/background.jpeg");
+  /* background-image: url("../public/background.jpg"); */
+  min-height: 102vh;
+  height: 100%;
+  background-position: center; /* Center the image */
+  background-repeat: no-repeat; /* Do not repeat the image */
+  background-size: cover; /* Resize the background image to cover the entire container */
+  background-attachment: fixed;
+}

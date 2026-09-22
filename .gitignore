@@ -1,0 +1,9 @@
+/venv/
+/webapp/frontend/gui/node_modules/
+
+/webapp/webapp/__pycache__/
+/webapp/backend/__pycache__/
+/webapp/frontend/__pycache__/
+
+/webapp/backend/migrations/
+/webapp/frontend/migrations/
