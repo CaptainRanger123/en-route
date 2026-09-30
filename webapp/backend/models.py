@@ -43,6 +43,7 @@ class Rider(models.Model):
 
     max_capacity = models.IntegerField(default=0)
     is_stuck = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=RIDER_STATUSES, default="AVAILABLE")
 
     def __str__(self):
         return self.name
@@ -64,16 +65,21 @@ class Product(models.Model):
 
 class Order(models.Model):
     product = models.ForeignKey(Product, related_name="orders", on_delete=models.CASCADE)
-    rider = models.ForeignKey(Rider, related_name="orders", on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, related_name="orders", on_delete=models.CASCADE)
+    # Rider is assigned later by the dispatcher/dispatch algorithm, so it starts out unset
+    rider = models.ForeignKey(Rider, related_name="orders", on_delete=models.CASCADE, null=True, blank=True)
 
-    status = models.CharField(max_length=10, choices=ORDER_STATUSES)
-    priority = models.IntegerField(default=0)
-    amt_paid = models.FloatField(default=0.0)
+    status = models.CharField(max_length=10, choices=ORDER_STATUSES, default="UNASSIGNED")
+    priority = models.IntegerField(default=0) # TODO
+    amt_paid = models.FloatField(default=0.0) # Show price + GST (18%)
 
     address = models.CharField(max_length=1000, blank=True, default="")
     address_photo = models.ImageField(upload_to="address_photos/", null=True, blank=True)
     dest_lat = models.FloatField(default=0.0)
     dest_lon = models.FloatField(default=0.0)
+
+    cur_lat = models.FloatField(default=0.0)
+    cur_lon = models.FloatField(default=0.0)
 
     def __str__(self):
         return f"Order {self.id}"

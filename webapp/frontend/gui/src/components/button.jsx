@@ -1,22 +1,38 @@
 import { Component } from "react";
 
-const COLOR_STYLES = {
-  danger: "bg-gradient-to-b from-red-500 to-red-600 hover:from-red-600 hover:to-red-700",
-  info: "bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
-  default: "bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700",
-};
-
 class Button extends Component {
+  static defaultProps = {
+    type: "button",
+    color: "coffee",
+    variant: "solid",
+    fullWidth: false,
+    disabled: false,
+  }
+
   render() {
-    const { fullwidth, formSubmit, onClick, text, color } = this.props;
-    const colorClass = COLOR_STYLES[color] || COLOR_STYLES.default;
+    const { text, onClick, type, formSubmit, color, variant, fullWidth, disabled } = this.props;
+
+    const base = "inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 py-2.5 transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+
+    const colors = {
+      coffee: variant === "solid"
+        ? "bg-amber-800 text-white hover:bg-amber-900"
+        : "bg-white text-amber-900 border border-amber-300 hover:bg-amber-50",
+      stone: variant === "solid"
+        ? "bg-stone-800 text-white hover:bg-stone-900"
+        : "bg-white text-stone-700 border border-stone-300 hover:bg-stone-50",
+      red: variant === "solid"
+        ? "bg-red-600 text-white hover:bg-red-700"
+        : "bg-white text-red-600 border border-red-200 hover:bg-red-50",
+    }
 
     return (
       <button
-        type={formSubmit ? "submit" : "button"}
-        form={formSubmit}
+        type={formSubmit ? "submit" : type}
+        form={formSubmit || undefined}
         onClick={onClick}
-        className={`${fullwidth ? "w-full" : ""} px-5 py-2 rounded-lg font-semibold text-sm text-white cursor-pointer transition-colors shadow-sm ${colorClass}`}
+        disabled={disabled}
+        className={`${base} ${colors[color]} ${fullWidth ? "w-full" : ""}`}
       >
         {text}
       </button>

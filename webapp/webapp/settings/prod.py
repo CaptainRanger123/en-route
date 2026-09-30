@@ -38,11 +38,13 @@ DATABASES = {
 
 STATIC_URL = "/static/"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path.joinpath(BASE_DIR, "media")
+
 STATICFILES_DIRS = [
     Path.joinpath(BASE_DIR, "frontend", "gui", "dist", "assets"),
     Path.joinpath(BASE_DIR, "frontend", "gui", "dist")
 ]
 
 STATIC_ROOT = Path.joinpath(BASE_DIR, "staticfiles")
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

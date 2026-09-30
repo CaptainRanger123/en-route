@@ -1,4 +1,9 @@
+import os
+
 SECRET_KEY = "django-insecure-yka)@-dy0ieuk05+0%#qsw1n+_k_cpsveg^zf31o&5s^^m&8cg"
+
+# GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY = "AQ.Ab8RN6L_fXGSIkTOpEvDkkJi4-ejp0128zbVC4CksSVQ2fi5SQ"
 
 INSTALLED_APPS = [
     "admin_interface",

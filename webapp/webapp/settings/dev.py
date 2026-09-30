@@ -35,6 +35,9 @@ DATABASES = {
 
 STATIC_URL = "/static/"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path.joinpath(BASE_DIR, "media")
+
 CORS_ORIGIN_WHITELIST = [
     "http://localhost:5173"
 ]

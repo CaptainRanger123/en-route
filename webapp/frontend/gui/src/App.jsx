@@ -4,10 +4,12 @@ import { Component } from "react";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer, toast } from "react-toastify";
 
-// Components
-import MainPage from "./components/mainPage.jsx";
-import LoginForm from "./components/loginForm.jsx";
-
+import CustomerLogin from "./components/customerLogin.jsx";
+import DispatcherLogin from "./components/dispatcherLogin.jsx";
+import Navbar from "./components/navbar.jsx";
+import ProductsPage from "./components/productsPage.jsx";
+import OrdersPage from "./components/ordersPage.jsx";
+import DispatcherDashboard from "./components/dispatcherDashboard.jsx";
 
 const options = {
   position: "bottom-right",
@@ -21,29 +23,46 @@ class App extends Component {
   constructor(props) {
     super(props);
 
-    console.log(process.env.NODE_ENV);
     this.URL = process.env.NODE_ENV === "production" ? "" : "http://localhost:8000";
-
-    console.log(this.URL);
 
     this.state = {
       loggedIn: localStorage.getItem("jwt-token") ? true : false,
-      username: "",
-      accType: ""
+      role: localStorage.getItem("role") || "",
+      username: localStorage.getItem("username") || "",
+
+      authTab: "customer",
+      page: "products",
+
+      products: [],
+      orders: [],
+
+      loggingIn: false,
+      loadingProducts: false,
+      loadingOrders: false,
+      placingOrder: false,
     }
   }
 
   request = async (route, method, body=null, logoutOnElse=true, msgOnSuccess=true) => {
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+    const headers = {
+      "Authorization": `jwt-token ${localStorage.getItem("jwt-token")}`,
+      "X-CSRFToken": this.getCsrfCookie()
+    };
+
+    // Let the browser set Content-Type (with boundary) for multipart uploads
+    if (!isFormData && (method === "POST" || method === "PUT" || method === "DELETE")) {
+      headers["Content-Type"] = "application/json";
+    }
+
     let res;
 
-    if (method === "POST") {
+    if (method === "POST" || method === "PUT" || method === "DELETE") {
       res = await fetch(`${this.URL}/api/${route}`, {
         method: method,
-        headers: {
-          "Authorization": `jwt-token ${localStorage.getItem("jwt-token")}`,
-          "X-CSRFToken": this.getCsrfCookie()
-        },
-        body: JSON.stringify(body)
+        headers,
+        body: body ? (isFormData ? body : JSON.stringify(body)) : undefined
       });
     } else {
       res = await fetch(`${this.URL}/api/${route}`, {
@@ -56,10 +75,9 @@ class App extends Component {
     }
 
     const json = await res.json();
-    console.log(json);
 
     if (json.type === "success") {
-      if (msgOnSuccess) {
+      if (msgOnSuccess && json.message) {
         toast.success(`Success: ${json.message}`, options);
       }
 
@@ -77,12 +95,6 @@ class App extends Component {
 
       return json
 
-    } else if (json.type === "generateToken") {
-      console.log(`Redirecting to ${json.url}`);
-      window.location = json.url;
-
-      return json
-
     } else {
       toast.error(`${json.type}: ${json.message}`, options);
       if (logoutOnElse) {
@@ -95,15 +107,8 @@ class App extends Component {
   }
 
   componentDidMount = async () => {
-    if (this.state.loggedIn) {
-      const json = await this.request("dispatcher-current-user/", "GET");
-
-      if (json.type === "success") {
-        this.setState({
-          username: json.username,
-          accType: json.acc_type
-        });
-      }
+    if (this.state.loggedIn && this.state.role === "customer") {
+      this.fetchProducts();
     }
   }
 
@@ -111,53 +116,177 @@ class App extends Component {
     return Cookies.get("csrftoken");
   }
 
-  handleLogin = async data => {
-    console.log(data);
-    const json = await this.request("login/", "POST", data, false);
+  fetchProducts = async () => {
+    this.setState({loadingProducts: true});
+
+    const json = await this.request("product-list/", "GET", null, true, false);
+
+    if (json.type === "success") {
+      this.setState({products: json.data});
+    }
+
+    this.setState({loadingProducts: false});
+  }
+
+  fetchOrders = async () => {
+    this.setState({loadingOrders: true});
+
+    const json = await this.request("customer-order-list/", "GET", null, true, false);
+
+    if (json.type === "success") {
+      this.setState({orders: json.data});
+    }
+
+    this.setState({loadingOrders: false});
+  }
+
+  handleAuthTabChange = tab => {
+    this.setState({authTab: tab});
+  }
+
+  handleCustomerLogin = async data => {
+    this.setState({loggingIn: true});
+
+    const json = await this.request("customer-login/", "POST", data, false);
 
     if (json.type === "success") {
       localStorage.setItem("jwt-token", json.jwtToken);
-      this.setState({loggedIn: true});
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("role", "customer");
 
-      const username_json = await this.request("current-user/", "GET");
-
-      if (username_json.type === "success") {
-        this.setState({
-          username: username_json.username,
-          accType: username_json.acc_type
-        });
-      }
+      this.setState({loggedIn: true, role: "customer", username: data.username, page: "products"});
+      this.fetchProducts();
     }
+
+    this.setState({loggingIn: false});
+  }
+
+  handleDispatcherLogin = async data => {
+    this.setState({loggingIn: true});
+
+    const json = await this.request("dispatcher-login/", "POST", data, false);
+
+    if (json.type === "success") {
+      localStorage.setItem("jwt-token", json.jwtToken);
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("role", "dispatcher");
+
+      this.setState({loggedIn: true, role: "dispatcher", username: data.username});
+    }
+
+    this.setState({loggingIn: false});
   }
 
   handleLogout = () => {
     localStorage.removeItem("jwt-token");
-    this.setState({loggedIn: false});
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
+
+    this.setState({
+      loggedIn: false,
+      role: "",
+      username: "",
+      page: "products",
+      products: [],
+      orders: []
+    });
+
     toast.info("Logged out!", options);
   }
 
-  render() {
-    let page = null;
+  handleNavigate = page => {
+    this.setState({page});
 
-    if (!this.state.loggedIn) {
-      page = <LoginForm
-        handleLogin={this.handleLogin}
-      />
+    if (page === "orders") {
+      this.fetchOrders();
+    } else if (page === "products") {
+      this.fetchProducts();
+    }
+  }
 
-    } else {
-      page = <MainPage
-        URL={this.URL}
-        request={this.request}
-        username={this.state.username}
-        accType={this.state.accType}
-        handleLogout={this.handleLogout}
-      />
+  handlePlaceOrder = async data => {
+    this.setState({placingOrder: true});
+
+    // Business errors (e.g. out of stock) shouldn't log the customer out
+    const json = await this.request("order-place/", "POST", data, false);
+
+    this.setState({placingOrder: false});
+
+    if (json.type === "success") {
+      this.fetchProducts();
+      return true;
     }
 
+    return false;
+  }
+
+  render() {
+    const {
+      loggedIn, role, username, page, authTab,
+      products, orders,
+      loggingIn, loadingProducts, loadingOrders, placingOrder
+    } = this.state;
+
+    let content;
+
+    if (!loggedIn) {
+      content = (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-amber-50 px-4">
+          <div className="inline-flex items-center justify-center rounded-xl border-2 border-amber-200 mb-3 shadow-lg">
+            <img src="/logo3.png" alt="En Route" className="w-45 rounded-xl" />
+          </div>
+
+          <div className="flex bg-white border border-amber-200 rounded-full p-1 mb-3 shadow-sm">
+            {["customer", "dispatcher"].map(tab => (
+              <button
+                key={tab}
+                onClick={() => this.handleAuthTabChange(tab)}
+                className={`px-5 py-2 rounded-full text-sm font-medium capitalize transition-colors cursor-pointer ${
+                  authTab === tab ? "bg-amber-800 text-white" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {authTab === "dispatcher" ? (
+            <DispatcherLogin onLogin={this.handleDispatcherLogin} loading={loggingIn} />
+          ) : (
+            <CustomerLogin onLogin={this.handleCustomerLogin} loading={loggingIn} />
+          )}
+        </div>
+      );
+    } else if (role === "dispatcher") {
+      content = (
+        <DispatcherDashboard request={this.request} username={username} onLogout={this.handleLogout} />
+      );
+    } else {
+      content = (
+        <div className="min-h-screen bg-amber-50">
+          <Navbar username={username} page={page} onNavigate={this.handleNavigate} onLogout={this.handleLogout} />
+
+          {page === "products" ? (
+            <ProductsPage
+              products={products}
+              loading={loadingProducts}
+              placingOrder={placingOrder}
+              onPlaceOrder={this.handlePlaceOrder}
+            />
+          ) : (
+            <OrdersPage orders={orders} loading={loadingOrders} />
+          )}
+        </div>
+      );
+    }
+
+    // ToastContainer lives here, outside the conditional branches above, so it's
+    // never unmounted/remounted when switching between login/dashboard views —
+    // otherwise a toast fired right before a state-driven view swap gets dropped.
     return (
       <div className="App">
-        {page}
-        {/* <ToastContainer /> */}
+        {content}
+        <ToastContainer />
       </div>
     );
   }
