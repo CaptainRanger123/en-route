@@ -1,6 +1,10 @@
 import json
 from groq import Groq
 
+# ==========================
+# Groq LLM API
+# ==========================
+
 # client = Groq(api_key="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")
 
 # ocr_texts = [
@@ -34,12 +38,35 @@ from groq import Groq
 # )
 # print("Chat completion: ", chat_completion.choices[0].message.content)
 
+# ==========================
+# Mapbox Geocoding API
+# ==========================
+
+# import requests as r
+
+# search_text = "INDIRANAGAR, BANGALORE, KARNATAKA"
+# token = "pk.eyJ1IjoiYWJoeXVkYXlhMjUiLCJhIjoiY211b2t6bDRmMDAybzJ5cjQ0cnc3b2ZpdCJ9.AeerekrhBLiLUSp1oolPow"
+
+# res = r.get(f"https://api.mapbox.com/search/geocode/v6/forward?q={search_text}&access_token={token}")
+# print(res.text)
+
+# print(res.json()["features"][0]["geometry"]["coordinates"])
+
+# ==========================
+# ORSM Routing API
+# ==========================
+
 import requests as r
 
-search_text = "INDIRANAGAR, BANGALORE, KARNATAKA"
-token = "pk.eyJ1IjoiYWJoeXVkYXlhMjUiLCJhIjoiY211b2t6bDRmMDAybzJ5cjQ0cnc3b2ZpdCJ9.AeerekrhBLiLUSp1oolPow"
+service = "route"
+version = "v1"
+profile = "bike"
+start_coords = (77.646, 12.842)
+end_coords = (77.665, 12.836)
 
-res = r.get(f"https://api.mapbox.com/search/geocode/v6/forward?q={search_text}&access_token={token}")
-print(res.text)
+res = r.get(f"http://router.project-osrm.org/{service}/{version}/{profile}/{start_coords[0]},{start_coords[1]};{end_coords[0]},{end_coords[1]}?overview=simplified&geometries=geojson&alternatives=false")
+data = res.json()
 
-print(res.json()["features"][0]["geometry"]["coordinates"])
+if data["code"] == "Ok":
+    print(data["routes"][0]["legs"][0]["duration"])
+    print(data["routes"][0]["geometry"]["coordinates"])

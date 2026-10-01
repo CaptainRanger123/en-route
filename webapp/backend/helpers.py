@@ -8,6 +8,10 @@ from groq import Groq
 # from google import genai
 from paddleocr import PaddleOCR
 
+from .constants import MIN_LAT, MAX_LAT, MIN_LON, MAX_LON, MIN_CONFIDENCE
+
+from .models import Rider
+
 MAPBOX_TOKEN = "pk.eyJ1IjoiYWJoeXVkYXlhMjUiLCJhIjoiY211b2t6bDRmMDAybzJ5cjQ0cnc3b2ZpdCJ9.AeerekrhBLiLUSp1oolPow"
 
 client = Groq(api_key="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")
@@ -180,7 +184,7 @@ def get_coords_from_address(address, address_photo=None):
             print("Address parsed by LLM: ", address)
             print("LLM confidence: ", confidence)
 
-            if confidence < 0.5:
+            if confidence < MIN_CONFIDENCE:
                 return (0, 0, address, 0)
 
         except Exception:
@@ -223,3 +227,66 @@ def get_coords_from_address(address, address_photo=None):
             return (0, 0, address, confidence if confidence is not None else 0)
 
     return (latitude, longitude, address, confidence)
+
+
+def select_rider_automatically(order):
+    """
+    Choose a rider for an UNASSIGNED order.
+
+    Eligible riders must have remaining capacity (max - filled) at least
+    the product weight. Among those, pick the shortest OSRM bike duration
+    from the rider's current coordinates to the warehouse, then to the
+    order destination.
+    """
+    warehouse = order.product.warehouse
+    product_weight = order.product.weight
+    warehouse_coords = (warehouse.longitude, warehouse.latitude)
+    dest_coords = (order.dest_lon, order.dest_lat)
+
+    service = "route"
+    version = "v1"
+    profile = "bike"
+
+    best_rider = None
+    best_duration = None
+
+    for rider in Rider.objects.all():
+        remaining_capacity = rider.max_capacity - rider.filled_capacity
+        if remaining_capacity < product_weight:
+            continue
+
+        start = (rider.longitude, rider.latitude)
+
+        try:
+            res = requests.get(
+                f"http://router.project-osrm.org/{service}/{version}/{profile}/"
+                f"{start[0]},{start[1]};{warehouse_coords[0]},{warehouse_coords[1]};{dest_coords[0]},{dest_coords[1]}"
+                "?overview=simplified&geometries=geojson&alternatives=false",
+                timeout=20
+            )
+            data = res.json()
+        except Exception:
+            traceback.print_exc()
+            continue
+
+        print(data)
+
+        if data.get("code") != "Ok":
+            continue
+
+        duration = data["routes"][0]["duration"]
+        print(f"{rider.name} duration: {duration}")
+
+        if best_duration is None or duration < best_duration:
+            best_duration = duration
+            best_rider = rider
+
+    return best_rider
+
+
+def verify_coords(lat, lon):
+    return bool(
+        MIN_LAT <= lat <= MAX_LAT
+        and
+        MIN_LON <= lon <= MAX_LON
+    )

@@ -20,6 +20,8 @@ urlpatterns = [
     path("order-list/", views.order_list, name="order_list"),
     path("order-detail/<int:order_id>/", views.order_detail, name="order_detail"),
     path("order-delete/<int:order_id>/", views.order_delete, name="order_delete"),
+    path("order-assign/<int:order_id>/", views.order_assign_manual, name="order_assign_manual"),
+    path("order-assign-auto/<int:order_id>/", views.order_assign_automatic, name="order_assign_automatic"),
 
     path("product-add/", views.product_add, name="product_add"),
     path("product-update/<int:product_id>/", views.product_update, name="product_update"),

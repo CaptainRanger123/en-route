@@ -13,13 +13,13 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 
 # Models
-from .models import Dispatcher, Customer, Rider, Product, Order, Warehouse, AuditLog
+from .models import Dispatcher, Customer, Rider, Product, Order, Warehouse, RouteSegment, AuditLog
 
 # Constants
-from .constants import GST_RATE
+from .constants import GST_RATE, MIN_CONFIDENCE
 
 # Helpers
-from .helpers import get_coords_from_address
+from .helpers import get_coords_from_address, select_rider_automatically, verify_coords
 
 env = os.environ.get("EN_ROUTE_ENV")
 
@@ -173,6 +173,9 @@ def warehouse_add(request):
     latitude = data["latitude"]
     longitude = data["longitude"]
 
+    if not verify_coords(latitude, longitude):
+        return JsonResponse({"type": "WarehouseException", "message": "Coordinates outside service area"}, status=400)
+
     warehouse = Warehouse.objects.create(
         name=name,
         latitude=latitude,
@@ -198,10 +201,15 @@ def warehouse_update(request, warehouse_id):
         return JsonResponse({"type": "WarehouseException", "message": "Invalid Warehouse"}, status=400)
 
     data = json.loads(request.body)
+    lat = float(data.get("latitude", warehouse.latitude))
+    lon = float(data.get("longitude", warehouse.longitude))
+
+    if not verify_coords(lat, lon):
+        return JsonResponse({"type": "WarehouseException", "message": "Coordinates outside service area"}, status=400)
 
     warehouse.name = data.get("name", warehouse.name)
-    warehouse.latitude = float(data.get("latitude", warehouse.latitude))
-    warehouse.longitude = float(data.get("longitude", warehouse.longitude))
+    warehouse.latitude = lat
+    warehouse.longitude = lon
     warehouse.save()
 
     return JsonResponse({"type": "success", "message": "Warehouse Updated"}, status=200)
@@ -248,8 +256,8 @@ def rider_list(request):
             "latitude": rider.latitude,
             "longitude": rider.longitude,
             "max_capacity": rider.max_capacity,
+            "filled_capacity": rider.filled_capacity,
             "is_stuck": rider.is_stuck,
-            "status": rider.status,
         })
 
     return JsonResponse({"type": "success", "data": data_to_ret})
@@ -272,7 +280,7 @@ def rider_add(request):
 
     start_warehouse = Warehouse.objects.get(id=int(data["warehouse_id"]))
     lat = start_warehouse.latitude
-    long = start_warehouse.longitude
+    lon = start_warehouse.longitude
 
     max_cap = int(data["max_cap"])
 
@@ -282,7 +290,7 @@ def rider_add(request):
         email=email,
 
         latitude=lat,
-        longitude=long,
+        longitude=lon,
 
         max_capacity=max_cap,
         is_stuck=False
@@ -313,12 +321,16 @@ def rider_update(request, rider_id):
     rider.email = data.get("email", rider.email)
     rider.max_capacity = int(data.get("max_cap", rider.max_capacity))
     rider.is_stuck = bool(data.get("is_stuck", rider.is_stuck))
-    rider.status = data.get("status", rider.status)
+    rider.filled_capacity = int(data.get("filled_capacity", rider.filled_capacity))
 
-    if "latitude" in data:
-        rider.latitude = float(data["latitude"])
-    if "longitude" in data:
-        rider.longitude = float(data["longitude"])
+    lat = float(data.get("latitude", rider.latitude))
+    lon = float(data.get("longitude", rider.longitude))
+
+    if not verify_coords(lat, lon):
+        return JsonResponse({"type": "RiderException", "message": "Coordinates outside service area"}, status=400)
+
+    rider.latitude = lat
+    rider.longitude = lon
 
     rider.save()
 
@@ -592,6 +604,77 @@ def order_delete(request, order_id):
     return JsonResponse({"type": "success", "message": "Order Deleted"}, status=200)
 
 
+def _assign_rider_to_order(order, rider):
+    order.rider = rider
+    order.status = "ASSIGNED"
+    order.save()
+
+    rider.filled_capacity += order.product.weight
+    rider.save()
+
+
+@conditional_decorator(csrf_exempt, env != "prod")
+@conditional_decorator(csrf_protect, env == "prod")
+@require_http_methods(["POST"])
+def order_assign_manual(request, order_id):
+    res = protected(request, "dispatcher")
+
+    if isinstance(res, JsonResponse):
+        return res
+
+    try:
+        order = Order.objects.get(id=int(order_id))
+    except Order.DoesNotExist:
+        return JsonResponse({"type": "OrderException", "message": "Invalid Order"}, status=400)
+
+    if order.status != "UNASSIGNED":
+        return JsonResponse({"type": "OrderException", "message": "Order is not UNASSIGNED"}, status=400)
+
+    data = payload_from_request(request)
+
+    try:
+        rider = Rider.objects.get(id=int(data["rider_id"]))
+    except (Rider.DoesNotExist, KeyError, TypeError, ValueError):
+        return JsonResponse({"type": "RiderException", "message": "Invalid Rider"}, status=400)
+
+    if rider.filled_capacity + order.product.weight > rider.max_capacity:
+        return JsonResponse({"type": "RiderException", "message": "Rider at full capacity"}, status=400)
+
+    _assign_rider_to_order(order, rider)
+
+    return JsonResponse({"type": "success", "message": f"Assigned to {rider.name}", "rider_id": rider.id}, status=200)
+
+
+@conditional_decorator(csrf_exempt, env != "prod")
+@conditional_decorator(csrf_protect, env == "prod")
+@require_http_methods(["POST"])
+def order_assign_automatic(request, order_id):
+    res = protected(request, "dispatcher")
+
+    if isinstance(res, JsonResponse):
+        return res
+
+    try:
+        order = Order.objects.get(id=order_id)
+    except Order.DoesNotExist:
+        return JsonResponse({"type": "OrderException", "message": "Invalid Order"}, status=400)
+
+    if order.status != "UNASSIGNED":
+        return JsonResponse({"type": "OrderException", "message": "Order is not UNASSIGNED"}, status=400)
+
+    rider = select_rider_automatically(order)
+
+    if rider is None:
+        return JsonResponse({"type": "RiderException", "message": "No rider could be assigned automatically"}, status=400)
+
+    return JsonResponse({
+        "type": "success",
+        "message": f"{rider.name} selected for order #{order.id}",
+        "rider_id": rider.id,
+        "rider_name": rider.name,
+    }, status=200)
+
+
 @require_http_methods(["GET"])
 def get_markers(request):
     res = protected(request, "dispatcher")
@@ -617,19 +700,52 @@ def get_markers(request):
             "longitude": rider.longitude,
         })
 
-    orders = []
+    order_destinations = []
+    order_positions = []
     for order in Order.objects.all():
-        if order.dest_lat == 0 and order.dest_lon == 0:
+        if order.status in ("DELIVERED", "FAILED"):
             continue
 
-        orders.append({
-            "id": order.id,
-            "name": f"Order #{order.id}",
-            "latitude": order.dest_lat,
-            "longitude": order.dest_lon,
+        if not (order.dest_lat == 0 and order.dest_lon == 0):
+            order_destinations.append({
+                "id": order.id,
+                "name": f"Order #{order.id}",
+                "latitude": order.dest_lat,
+                "longitude": order.dest_lon,
+            })
+
+        if not (order.cur_lat == 0 and order.cur_lon == 0):
+            order_positions.append({
+                "id": order.id,
+                "name": f"Order #{order.id}",
+                "latitude": order.cur_lat,
+                "longitude": order.cur_lon,
+            })
+
+    route_segments = []
+    for segment in RouteSegment.objects.all():
+        geometry = segment.geometry or []
+        if isinstance(geometry, str):
+            try:
+                geometry = json.loads(geometry)
+            except json.JSONDecodeError:
+                geometry = []
+
+        route_segments.append({
+            "id": segment.id,
+            "geometry": geometry,
         })
 
-    return JsonResponse({"type": "success", "data": {"warehouses": warehouses, "riders": riders, "orders": orders}})
+    return JsonResponse({
+        "type": "success",
+        "data": {
+            "warehouses": warehouses,
+            "riders": riders,
+            "order_destinations": order_destinations,
+            "order_positions": order_positions,
+            "route_segments": route_segments,
+        },
+    })
 
 
 @require_http_methods(["GET"])
@@ -728,7 +844,7 @@ def order_place(request):
 
     dest_lat, dest_lon, parsed_address, address_confidence = get_coords_from_address(address, add_photo)
 
-    if address_confidence < 0.5:
+    if address_confidence < MIN_CONFIDENCE:
         return JsonResponse({"type": "AddressException", "message": "Address Identification Confidence is too low"}, status=400)
 
     if dest_lat == 0 and dest_lon == 0:
@@ -736,6 +852,9 @@ def order_place(request):
 
     if parsed_address:
         address = parsed_address
+
+    if not verify_coords(dest_lat, dest_lon):
+        return JsonResponse({"type": "AddressException", "message": "Address outside service area"}, status=400)
 
     order = Order.objects.create(
         product=product,

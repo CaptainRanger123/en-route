@@ -83,13 +83,13 @@ class RidersPage extends Component {
                         {rider.is_stuck ? "Stuck" : "No"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    {/* <td className="px-5 py-3.5">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
                         RIDER_STATUS_STYLES[rider.status] || "bg-stone-100 text-stone-600"
                       }`}>
                         {rider.status.replace("_", " ")}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="px-5 py-3.5 text-right whitespace-nowrap">
                       <button onClick={() => this.setState({ editingRider: rider })} className="text-xs font-medium text-amber-800 hover:text-amber-900 cursor-pointer mr-4">
                         Edit

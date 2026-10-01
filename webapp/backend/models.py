@@ -43,7 +43,7 @@ class Rider(models.Model):
 
     max_capacity = models.IntegerField(default=0)
     is_stuck = models.BooleanField(default=False)
-    status = models.CharField(max_length=20, choices=RIDER_STATUSES, default="AVAILABLE")
+    filled_capacity = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -67,9 +67,9 @@ class Order(models.Model):
     product = models.ForeignKey(Product, related_name="orders", on_delete=models.CASCADE)
     customer = models.ForeignKey(Customer, related_name="orders", on_delete=models.CASCADE)
     # Rider is assigned later by the dispatcher/dispatch algorithm, so it starts out unset
-    rider = models.ForeignKey(Rider, related_name="orders", on_delete=models.CASCADE, null=True, blank=True)
+    rider = models.ForeignKey(Rider, related_name="orders", on_delete=models.SET_NULL, null=True, blank=True)
 
-    status = models.CharField(max_length=10, choices=ORDER_STATUSES, default="UNASSIGNED")
+    status = models.CharField(max_length=50, choices=ORDER_STATUSES, default="UNASSIGNED")
     priority = models.IntegerField(default=0) # TODO
     amt_paid = models.FloatField(default=0.0) # Show price + GST (18%)
 
@@ -83,6 +83,23 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id}"
+
+
+class RouteSegment(models.Model):
+    rider = models.ForeignKey(Rider, related_name="route_segments", on_delete=models.CASCADE)
+
+    from_lat = models.FloatField(default=0.0)
+    from_lon = models.FloatField(default=0.0)
+    to_lat = models.FloatField(default=0.0)
+    to_lon = models.FloatField(default=0.0)
+
+    geometry = models.JSONField(default=list)
+
+    segment_type = models.CharField(max_length=100, choices=SEGMENT_TYPES)
+    seq_no = models.IntegerField(default=0)  
+
+    def __str__(self):
+        return f"RouteSegment {self.id}"
 
 
 class AuditLog(models.Model):

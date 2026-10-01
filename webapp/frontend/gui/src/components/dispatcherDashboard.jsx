@@ -39,6 +39,7 @@ class DispatcherDashboard extends Component {
       orderDetail: null,
       loadingOrderDetail: false,
       deletingOrder: false,
+      assigningOrderId: null,
     };
   }
 
@@ -107,7 +108,7 @@ class DispatcherDashboard extends Component {
     if (navPage === "products") this.fetchProducts();
     else if (navPage === "warehouses") this.fetchWarehouses();
     else if (navPage === "riders") this.fetchRiders();
-    else if (navPage === "orders") this.fetchOrders();
+    else if (navPage === "orders") { this.fetchOrders(); this.fetchRiders(); }
     else if (navPage === "customers") this.fetchCustomers();
     else if (navPage === "logs") this.fetchLogs();
   };
@@ -208,6 +209,33 @@ class DispatcherDashboard extends Component {
     }
   }
 
+  handleAssignManual = async (orderId, riderId) => {
+    this.setState({ assigningOrderId: orderId });
+    await this.props.request(`order-assign/${orderId}/`, "POST", { rider_id: riderId }, false);
+    this.setState({ assigningOrderId: null });
+    this.fetchOrders();
+    this.fetchRiders();
+  }
+
+  handleAssignAuto = async orderId => {
+    this.setState({ assigningOrderId: orderId });
+
+    const json = await this.props.request(`order-assign-auto/${orderId}/`, "POST", {}, false, false);
+
+    this.setState({ assigningOrderId: null });
+
+    if (json.type !== "success") {
+      return;
+    }
+
+    const riderName = json.rider_name || `rider #${json.rider_id}`;
+    const confirmed = window.confirm(`Assign ${riderName} to order #${orderId}?`);
+
+    if (confirmed) {
+      await this.handleAssignManual(orderId, json.rider_id);
+    }
+  }
+
   handleViewOrder = async orderId => {
     this.setState({ selectedOrderId: orderId, orderDetail: null, loadingOrderDetail: true });
 
@@ -241,7 +269,7 @@ class DispatcherDashboard extends Component {
       page, products, warehouses, riders, orders, customers, logs,
       loadingProducts, loadingWarehouses, loadingRiders, loadingOrders,
       loadingCustomers, loadingLogs, savingProduct, savingWarehouse, savingRider,
-      selectedOrderId, orderDetail, loadingOrderDetail, deletingOrder,
+      selectedOrderId, orderDetail, loadingOrderDetail, deletingOrder, assigningOrderId,
     } = this.state;
 
     return (
@@ -291,8 +319,12 @@ class DispatcherDashboard extends Component {
           {page === "orders" && (
             <DispatcherOrdersPage
               orders={orders}
+              riders={riders}
               loading={loadingOrders}
+              assigningOrderId={assigningOrderId}
               onViewOrder={this.handleViewOrder}
+              onAssignManual={this.handleAssignManual}
+              onAssignAuto={this.handleAssignAuto}
             />
           )}
 

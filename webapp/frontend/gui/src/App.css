@@ -39,3 +39,12 @@ body, #root, #app, #app>div {
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
+
+.labeled-marker-diamond {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transform: rotate(45deg);
+}
