@@ -323,6 +323,17 @@ The production frontend SPA is served from `frontend/gui/dist` via `frontend.url
 
 ---
 
+## Future plans
+
+These are the next improvements planned for En Route:
+
+- **Disruption simulation.** Model in-transit failures such as a rider’s bike breaking down. The routing loop would mark the rider `is_stuck`, freeze their current segment, and either wait for recovery or reassign remaining orders (and any package already on the bike) to another eligible rider. Dispatchers would see the incident on the map and in audit logs, with a path to `FAILED` when reassignment is not possible.
+- **Better order assignment.** Auto-assign currently picks the eligible rider with the shortest OSRM bike duration for a single order (`rider → warehouse → destination`). A stronger algorithm would consider load balancing, remaining capacity across a batch of pending orders, existing route geometry (insert a stop instead of always starting from the rider’s current point), and estimated time of arrival rather than duration alone.
+- **Docker setup.** Add a `Dockerfile` and `docker-compose.yml` so the API, Vite UI, PostgreSQL, routing loop, and optionally a local OSRM instance start with one command. That would replace the three-terminal local workflow and make production closer to `docker compose up` than a manual gunicorn + collectstatic sequence.
+- **Richer audit logs.** Logs are currently a flat list of timestamp, text, and level. Improve them with actor attribution (which dispatcher/customer/routing process wrote the event), links to the related order/rider/warehouse, filters and search in the UI, and consistent coverage of assignment, status changes, OCR/geocode failures, and future disruption events.
+
+---
+
 ## License
 
 Private / unspecified. Treat API keys, Mapbox tokens, and database passwords as secrets; rotate anything that has been committed to settings or helpers before deploying.
