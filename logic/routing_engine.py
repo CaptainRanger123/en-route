@@ -13,7 +13,7 @@ class Router:
             version = "v1"
             profile = "bike"
 
-            res = r.get(f"http://router.project-osrm.org/{service}/{version}/{profile}/{from_lon},{from_lat};{to_lon},{to_lat}?overview=full&geometries=geojson&alternatives=false")
+            res = r.get(f"http://router.project-osrm.org/{service}/{version}/{profile}/{from_lon},{from_lat};{to_lon},{to_lat}?overview=simplified&geometries=geojson&alternatives=false")
             data = res.json()
 
             if data["code"] == "Ok":
@@ -45,8 +45,8 @@ class Router:
                     seq_no = 1
 
                 else:
-                    start_lat = route_segments[-1].to_lat
-                    start_lon = route_segments[-1].to_lon
+                    start_lat = route_segments.iloc[-1].to_lat
+                    start_lon = route_segments.iloc[-1].to_lon
 
                     seq_no = len(route_segments) + 1
 
