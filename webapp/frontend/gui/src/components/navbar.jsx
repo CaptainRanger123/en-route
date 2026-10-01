@@ -14,7 +14,7 @@ class Navbar extends Component {
     return (
       <header className="bg-white border-b border-amber-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <img src="/logo1.png" alt="En Route" className="w-45" />
+          <img src="/static/logo1.png" alt="En Route" className="w-45" />
 
           <div className="flex items-center gap-8">
             {/* <div className="flex items-center gap-2">

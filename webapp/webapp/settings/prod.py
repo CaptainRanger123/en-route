@@ -7,6 +7,7 @@ DEBUG = False
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "enroute.alphaagent.in"
 ]
 
 TEMPLATES = [
@@ -29,8 +30,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "en-route",
-        "USER": "",
-        "PASSWORD": "",
+        "USER": "123456789",
+        "PASSWORD": "987654321",
         "HOST": "localhost",
         "PORT": 5432
     }

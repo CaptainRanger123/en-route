@@ -19,7 +19,7 @@ class Sidebar extends Component {
     return (
       <aside className="w-60 shrink-0 bg-white border-r border-amber-200 min-h-screen flex flex-col sticky top-0">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-amber-200">
-          <img src="/logo1.png" alt="En Route" className="w-45" />
+          <img src="/static/logo1.png" alt="En Route" className="w-45" />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
