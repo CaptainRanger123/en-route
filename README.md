@@ -63,13 +63,15 @@ All UI traffic in development hits `http://localhost:8000/api/…`. In productio
 
 ## Tech stack
 
-API -> Django 5.2, PyJWT
-UI -> React 19 (class components), Vite 8, Tailwind CSS 4, Leaflet / react-leaflet, react-toastify
-Database -> PostgreSQL
-Routing process -> SQLAlchemy 2, pandas, requests
-Routing / geocode -> OSRM (bike profile), Mapbox Geocoding v6
-Address from photo -> PaddleOCR, Groq (`openai/gpt-oss-20b`)
-Production extras -> gunicorn, WhiteNoise
+| Layer | Stack |
+| --- | --- |
+| API | Django 5.2, Python |
+| UI | React 19 (class components), Vite 8, Tailwind CSS 4, Leaflet / react-leaflet, react-toastify |
+| Database | PostgreSQL |
+| Routing process | SQLAlchemy 2, pandas, requests |
+| Routing / geocode | OSRM (bike profile), Mapbox Geocoding v6 |
+| Address from photo | PaddleOCR, Groq (`openai/gpt-oss-20b`) |
+| Production extras | gunicorn, WhiteNoise |
 
 Coordinates are confined to Bangalore centre:
 
@@ -104,13 +106,15 @@ En Route/
 
 ## Data models
 
-`Dispatcher` / `Customer` -> Login accounts (username + password)
-`Warehouse` -> Named pickup location with lat/lon
-`Product` -> Catalog item: photo, price, weight, stock, warehouse
-`Rider` -> Name/contact, live lat/lon, `max_capacity`, `filled_capacity`, `is_stuck`
-`Order` -> Product + customer + optional rider; destination and current coords; GST-inclusive `amt_paid`
-`RouteSegment` -> One hop of a rider’s path (`geometry` is GeoJSON `[lon, lat]` pairs)
-`AuditLog` -> Timestamped operational messages
+| Model | Role |
+| --- | --- |
+| `Dispatcher` / `Customer` | Login accounts (username + password) |
+| `Warehouse` | Named pickup location with lat/lon |
+| `Product` | Catalog item: photo, price, weight, stock, warehouse |
+| `Rider` | Name/contact, live lat/lon, `max_capacity`, `filled_capacity`, `is_stuck` |
+| `Order` | Product + customer + optional rider; destination and current coords; GST-inclusive `amt_paid` |
+| `RouteSegment` | One hop of a rider’s path (`geometry` is GeoJSON `[lon, lat]` pairs) |
+| `AuditLog` | Timestamped operational messages |
 
 ### Order status
 
@@ -118,12 +122,14 @@ En Route/
 UNASSIGNED → ASSIGNED → ON_TRANSIT → ON_DELIVERY → DELIVERED / FAILED
 ```
 
-`UNASSIGNED` -> Customer placed the order
-`ASSIGNED` -> Dispatcher has assigned a rider (manually or confirmed auto)
-`ON_TRANSIT` -> Routing engine has picked up the order + delivery route segments are created
-`ON_DELIVERY` -> Routing engine when `WH_PICKUP` geometry is exhausted (rider has picked up order)
-`DELIVERED` -> Routing engine when `ORDER_DELIVERY` geometry is exhausted (order has been delivered)
-`FAILED` -> Reserved in the schema (not driven by the current UI) (currently unused)
+| Status | Set by |
+| --- | --- |
+| `UNASSIGNED` | Customer place-order |
+| `ASSIGNED` | Dispatcher (manual or confirmed auto) |
+| `ON_TRANSIT` | Routing engine after pickup + delivery segments are created |
+| `ON_DELIVERY` | Routing engine when `WH_PICKUP` geometry is exhausted |
+| `DELIVERED` | Routing engine when `ORDER_DELIVERY` geometry is exhausted |
+| `FAILED` | Reserved in the schema (not driven by the current UI) |
 
 ### Map markers (`GET /api/get-markers/`)
 
@@ -138,7 +144,6 @@ Warehouses, Riders, Order Destinations, Orders' current locations and routes are
 - Node.js 18+ (for the Vite UI)
 - PostgreSQL with a database named `en-route`
 - Internet access for OSRM, Mapbox, and Groq (used at runtime)
-```
 
 ---
 
