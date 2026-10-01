@@ -233,7 +233,7 @@ class App extends Component {
       content = (
         <div className="min-h-screen flex flex-col items-center justify-center bg-amber-50 px-4">
           <div className="inline-flex items-center justify-center rounded-xl border-2 border-amber-200 mb-3 shadow-lg">
-            <img src="/logo3.png" alt="En Route" className="w-45 rounded-xl" />
+            <img src="/static/logo3.png" alt="En Route" className="w-45 rounded-xl" />
           </div>
 
           <div className="flex bg-white border border-amber-200 rounded-full p-1 mb-3 shadow-sm">
